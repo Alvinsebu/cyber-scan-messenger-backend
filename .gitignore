@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__
+*.py[cod]
+*$py.class
+*.dll
+
+# C extensions
+*.so
+
+# Virtual environment
+venv
+ENV/
+env/
+.venv/
+
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Flask
+instance/
+.webassets-cache
+
+# Environments
+.env
+.env.*
+*.env
+
+# VS Code
+.vscode/
+
+# MySQL dumps or local configs
+*.sql
+
+# Model files
+*.pkl
+*.joblib
+
+# Logs
+*.log
+
+
+# OS files
+.DS_Store
+Thumbs.db
