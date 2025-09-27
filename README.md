@@ -61,9 +61,9 @@ Update your config.py to read from .env
 🧠 Train the ML Model
 Use the following to train your model before starting the app:
 python train_model.py
-It saves the model as cyberbully_model.pkl.
+It saves the model, tokenizer in models folder.
 
-Ensure you have a CSV named cyberbullying_data.csv with columns: comment, bullying.
+Ensure you have a CSV named cyberbullying_data.csv with columns: text, lab.
 
 🧪 Initialize Database
 
