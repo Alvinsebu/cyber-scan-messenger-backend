@@ -24,3 +24,18 @@ def comment(args, post_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"msg": "Failed to create comment"}), 400
+    
+@comment_bp.route('/comments/<string:post_id>', methods=['GET'])
+def get_comments(post_id):
+    try:
+        comments = Comment.query.filter_by(post_id=post_id).all()
+        comments_list = [{
+            'id': comment.id,
+            'content': comment.content,
+            'user_id': comment.user_id,
+            'is_bullying': comment.is_bullying,
+            'created_at': comment.created_at
+        } for comment in comments]
+        return jsonify(comments_list)
+    except Exception as e:
+        return jsonify({"msg": "Failed to fetch comments"}), 400
