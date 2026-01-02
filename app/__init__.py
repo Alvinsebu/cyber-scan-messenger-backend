@@ -6,6 +6,10 @@ from app.routes.auth import auth, bcrypt
 from app.routes.post import post_bp
 from app.routes.comment import comment_bp
 from app.routes.health_check import health_check_bp
+from app.routes.chat import chat_bp
+from app.extensions import socketio
+from flask_migrate import Migrate
+from app.models import db
 import os
 import sys
 
@@ -15,19 +19,33 @@ from webargs.flaskparser import parser
 
 def create_app():
     app = Flask(__name__)
-    
-
     app.config.from_object(Config)
-
     db.init_app(app)
     bcrypt.init_app(app)
-    JWTManager(app)
+    jwt = JWTManager(app)
     CORS(app)
-
+    migrate = Migrate(app, db)
     app.register_blueprint(auth, url_prefix='/api')
     app.register_blueprint(post_bp, url_prefix='/api')
     app.register_blueprint(comment_bp, url_prefix='/api')
     app.register_blueprint(health_check_bp, url_prefix='/')
+
+    # Register chat blueprint (optional, for REST endpoints if needed)
+    # app.register_blueprint(chat_bp, url_prefix='/chat')
+
+    # Initialize SocketIO with app
+    socketio.init_app(app, cors_allowed_origins="*")
+
+    # JWT Token blacklist set (should be persistent in production)
+    token_blacklist = set()
+
+    @jwt.token_in_blocklist_loader
+    def is_token_revoked(jwt_header, jwt_payload):
+        jti = jwt_payload["jti"]
+        return jti in token_blacklist
+
+    # Expose blacklist for use in routes
+    app.token_blacklist = token_blacklist
 
     # Error handler for validation
     @parser.error_handler

@@ -111,3 +111,40 @@ config.py
 📬 Contact
 For suggestions or collaboration, contact: [Alvin.Sebastian] – [alvinsebastian779@gmail.com]
 
+---
+
+## 💬 Real-time Chat (WebSocket)
+
+This backend supports real-time chat using WebSockets (via Flask-SocketIO).
+
+### How to Use (Client Example)
+
+Connect to the WebSocket server (default: ws://localhost:5000):
+
+```js
+const socket = io('http://localhost:5000');
+
+// Join a chat room
+socket.emit('join', { room: 'room1', username: 'alice' });
+
+// Listen for messages
+socket.on('message', (data) => {
+  console.log(`${data.username}: ${data.msg}`);
+});
+
+// Send a message
+socket.emit('message', { room: 'room1', username: 'alice', msg: 'Hello!' });
+
+// Leave the room
+socket.emit('leave', { room: 'room1', username: 'alice' });
+
+// Listen for status updates (join/leave)
+socket.on('status', (data) => {
+  console.log(data.msg);
+});
+```
+
+You can use [socket.io-client](https://socket.io/docs/v4/client-api/) in JavaScript or any compatible WebSocket client.
+
+---
+

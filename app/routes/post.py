@@ -51,14 +51,15 @@ def upload_image():
 
         # Secure the filename
         filename = secure_filename(file.filename)
-        
+        print(f"Uploading file: {filename}")
+        print(f"File content type: {file.content_type}")
+        print(f"buckert name: {BUCKET_NAME}")
         # Upload file to S3
         s3.upload_fileobj(
             file,
             BUCKET_NAME,
             filename,
             ExtraArgs={
-                'ACL': 'public-read',
                 'ContentType': file.content_type
             }
         )
@@ -72,6 +73,7 @@ def upload_image():
         }), 201
 
     except Exception as e:
+        print(e)
         return jsonify({'msg': 'Failed to upload file'}), 400
 
 
@@ -91,20 +93,9 @@ def create_post(args):
         return jsonify({"msg": "Post created"}), 201
     except Exception as e:
         db.session.rollback()
+        print(e)
         return jsonify({"msg": "Failed to create post"}), 400
-@post_bp.route('/post', methods=['POST'])
-@jwt_required()
-@use_args(PostSchema(), location='json')
-def create_post(args):
-    try:
-        user_id = get_jwt_identity()
-        post = Post(content=args['content'], user_id=user_id)
-        db.session.add(post)
-        db.session.commit()
-        return jsonify({"msg": "Post created"}), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"msg": "Failed to create post"}), 400
+
 
 
 @post_bp.route('/post', methods=['GET'])
@@ -118,6 +109,7 @@ def get_posts():
         return jsonify({"msg": "Failed to get posts"}), 400
 
 @post_bp.route('/posts/random', methods=['GET'])
+@jwt_required()
 def get_random_posts():
     try:
         # Get page number and size from query params, default to page 1 and 10 items
@@ -128,16 +120,22 @@ def get_random_posts():
         posts = Post.query.order_by(db.func.random())\
                          .paginate(page=page, per_page=per_page, error_out=False)
 
-        # Prepare response data
+        from app.models import User
+        posts_with_usernames = []
+        for post in posts.items:
+            user = User.query.filter_by(id=post.user_id).first()
+            post_dict = post.to_dict()
+            post_dict['username'] = user.username if user else None
+            posts_with_usernames.append(post_dict)
         response = {
-            'posts': [post.to_dict() for post in posts.items],
+            'posts': posts_with_usernames,
             'total': posts.total,
             'pages': posts.pages,
             'current_page': posts.page
         }
-        
         return jsonify(response), 200
     except Exception as e:
+        print(e)
         return jsonify({"msg": "Failed to fetch random posts"}), 400
 
 

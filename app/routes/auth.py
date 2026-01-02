@@ -1,9 +1,13 @@
+
+from flask_jwt_extended import jwt_required, get_jwt
+
 from flask import Blueprint, request, jsonify
 from app.models import db, User
 from flask_bcrypt import Bcrypt
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from marshmallow import Schema, fields
 from webargs.flaskparser import use_args
+from flask import current_app
 
 auth = Blueprint('auth', __name__)
 bcrypt = Bcrypt()
@@ -37,8 +41,37 @@ def login(args):
     try:
         user = User.query.filter_by(email=args['email']).first()
         if user and bcrypt.check_password_hash(user.password, args['password']):
-            token = create_access_token(identity=user.id)
-            return jsonify(access_token=token)
+            access_token = create_access_token(identity=user.id)
+            refresh_token = create_refresh_token(identity=user.id)
+            return jsonify(access_token=access_token, refresh_token=refresh_token, email=user.email, username=user.username)
         return jsonify({"msg": "Invalid credentials"}), 401
     except Exception as e:
         return jsonify({"msg": "Login failed"}), 400
+
+
+# Endpoint to generate new access token from refresh token
+@auth.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    try:
+        current_user = get_jwt_identity()
+        new_access_token = create_access_token(identity=current_user)
+        return jsonify(access_token=new_access_token)
+    except Exception as e:
+        return jsonify({"msg": "Token refresh failed"}), 400
+
+
+
+
+# Endpoint to generate new access token from refresh token
+@auth.route('/logout', methods=['POST'])
+@jwt_required(refresh=True)
+def logout():
+    try:
+        jti = get_jwt()["jti"]
+        # Access the blacklist from the app context
+        current_app.token_blacklist.add(jti)
+        print(current_app.token_blacklist)
+        return jsonify({"msg": "Logout successful"}), 200
+    except Exception as e:
+        return jsonify({"msg": "Logout failed"}), 400

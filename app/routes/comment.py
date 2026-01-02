@@ -26,16 +26,23 @@ def comment(args, post_id):
         return jsonify({"msg": "Failed to create comment"}), 400
     
 @comment_bp.route('/comments/<string:post_id>', methods=['GET'])
+@jwt_required()
 def get_comments(post_id):
     try:
+        from app.models import User
         comments = Comment.query.filter_by(post_id=post_id).all()
-        comments_list = [{
-            'id': comment.id,
-            'content': comment.content,
-            'user_id': comment.user_id,
-            'is_bullying': comment.is_bullying,
-            'created_at': comment.created_at
-        } for comment in comments]
+        comments_list = []
+        for comment in comments:
+            user = User.query.filter_by(id=comment.user_id).first()
+            comments_list.append({
+                'id': comment.id,
+                'content': comment.content,
+                'user_id': comment.user_id,
+                'username': user.username if user else None,
+                'is_bullying': comment.is_bullying,
+                'created_at': comment.created_at
+            })
         return jsonify(comments_list)
     except Exception as e:
+        print(e)
         return jsonify({"msg": "Failed to fetch comments"}), 400
