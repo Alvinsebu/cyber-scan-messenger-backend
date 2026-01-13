@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.utils.detector import is_bullying
 from marshmallow import Schema, fields
 from webargs.flaskparser import use_args
+from config import Config
 
 comment_bp = Blueprint('comment', __name__)
 
@@ -16,6 +17,12 @@ class CommentSchema(Schema):
 def comment(args, post_id):
     try:
         user_id = get_jwt_identity()
+        
+        # Check if user has more than allowed bullying comments
+        bullying_count = Comment.query.filter_by(user_id=user_id, is_bullying=True).count()
+        if bullying_count >= Config.MAX_BULLYING_COUNT:
+            return jsonify({"msg": "user is blocked from commenting"}), 403
+        
         is_bully = is_bullying(args['content'])
         comment = Comment(content=args['content'], user_id=user_id, post_id=post_id, is_bullying=is_bully)
         db.session.add(comment)

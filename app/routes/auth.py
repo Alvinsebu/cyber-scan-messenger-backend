@@ -75,3 +75,45 @@ def logout():
         return jsonify({"msg": "Logout successful"}), 200
     except Exception as e:
         return jsonify({"msg": "Logout failed"}), 400
+
+# --- New API: List users with bullying comment count (paginated) ---
+from marshmallow import validate
+from app.models import Comment
+
+class PaginationSchema(Schema):
+    page = fields.Int(load_default=1, validate=validate.Range(min=1))
+    limit = fields.Int(load_default=100, validate=validate.Range(min=1, max=1000))
+
+@auth.route('/users/bullying', methods=['GET'])
+@jwt_required()
+@use_args(PaginationSchema(), location='query')
+def list_users_with_bullying(args):
+    try:
+        page = args['page']
+        limit = args['limit']
+        users_query = User.query.paginate(page=page, per_page=limit, error_out=False)
+        users = users_query.items
+        user_ids = [user.id for user in users]
+        bullying_counts = dict(
+            db.session.query(Comment.user_id, db.func.count(Comment.id))
+            .filter(Comment.is_bullying == True, Comment.user_id.in_(user_ids))
+            .group_by(Comment.user_id)
+            .all()
+        )
+        result = [
+            {
+                'username': user.username,
+                'bullyinyCommentCount': bullying_counts.get(user.id, 0)
+            }
+            for user in users
+        ]
+        response = {
+            'users': result,
+            'total': users_query.total,
+            'pages': users_query.pages,
+            'current_page': users_query.page
+        }
+        return jsonify(response), 200
+    except Exception as e:
+        print(e)
+        return jsonify({'msg': 'Failed to fetch users'}), 400
