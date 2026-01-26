@@ -29,12 +29,15 @@ def create_app():
     app.register_blueprint(post_bp, url_prefix='/api')
     app.register_blueprint(comment_bp, url_prefix='/api')
     app.register_blueprint(health_check_bp, url_prefix='/')
-
-    # Register chat blueprint (optional, for REST endpoints if needed)
-    # app.register_blueprint(chat_bp, url_prefix='/chat')
+    
+    # Register chat blueprint for REST API endpoints
+    app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
     # Initialize SocketIO with app
     socketio.init_app(app, cors_allowed_origins="*")
+    
+    # Import socket event handlers after socketio is initialized
+    from app.routes import chat  # This registers the socket event handlers
 
     # JWT Token blacklist set (should be persistent in production)
     token_blacklist = set()

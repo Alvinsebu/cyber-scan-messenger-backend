@@ -37,7 +37,7 @@ def comment(args, post_id):
 def get_comments(post_id):
     try:
         from app.models import User
-        comments = Comment.query.filter_by(post_id=post_id).all()
+        comments = Comment.query.filter_by(post_id=post_id).order_by(Comment.created_at.desc()).all()
         comments_list = []
         for comment in comments:
             user = User.query.filter_by(id=comment.user_id).first()

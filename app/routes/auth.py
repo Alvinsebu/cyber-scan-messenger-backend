@@ -25,14 +25,29 @@ class LoginSchema(Schema):
 @use_args(RegisterSchema(), location='json')
 def register(args):
     try:
+        # Check if user already exists
+        existing_user = User.query.filter(
+            (User.username == args['username']) | (User.email == args['email'])
+        ).first()
+        
+        if existing_user:
+            if existing_user.username == args['username']:
+                return jsonify({"msg": "Username already exists"}), 400
+            if existing_user.email == args['email']:
+                return jsonify({"msg": "Email already exists"}), 400
+        
         hashed = bcrypt.generate_password_hash(args['password']).decode('utf-8')
-        user = User(username=args['username'], password=hashed, email = args['email'])
+        user = User(username=args['username'], password=hashed, email=args['email'])
         db.session.add(user)
         db.session.commit()
         return jsonify({"msg": "Registered successfully"}), 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({"msg": "Registration failed"}), 400
+        # print(f"Registration error: {str(e)}")
+        print(e)
+        return jsonify({"msg": f"Registration failed: {str(e)}"}), 400
+    finally:
+        db.session.close()  # Ensure session is closed
 
 
 @auth.route('/login', methods=['POST'])
@@ -46,6 +61,7 @@ def login(args):
             return jsonify(access_token=access_token, refresh_token=refresh_token, email=user.email, username=user.username)
         return jsonify({"msg": "Invalid credentials"}), 401
     except Exception as e:
+        print(e)
         return jsonify({"msg": "Login failed"}), 400
 
 
@@ -58,6 +74,7 @@ def refresh():
         new_access_token = create_access_token(identity=current_user)
         return jsonify(access_token=new_access_token)
     except Exception as e:
+        print(e)
         return jsonify({"msg": "Token refresh failed"}), 400
 
 
@@ -74,11 +91,12 @@ def logout():
         print(current_app.token_blacklist)
         return jsonify({"msg": "Logout successful"}), 200
     except Exception as e:
+        print(e)
         return jsonify({"msg": "Logout failed"}), 400
 
 # --- New API: List users with bullying comment count (paginated) ---
 from marshmallow import validate
-from app.models import Comment
+from app.models import Comment, Message
 
 class PaginationSchema(Schema):
     page = fields.Int(load_default=1, validate=validate.Range(min=1))
@@ -94,16 +112,30 @@ def list_users_with_bullying(args):
         users_query = User.query.paginate(page=page, per_page=limit, error_out=False)
         users = users_query.items
         user_ids = [user.id for user in users]
-        bullying_counts = dict(
+        usernames = [user.username for user in users]
+        
+        # Count bullying comments
+        bullying_comment_counts = dict(
             db.session.query(Comment.user_id, db.func.count(Comment.id))
             .filter(Comment.is_bullying == True, Comment.user_id.in_(user_ids))
             .group_by(Comment.user_id)
             .all()
         )
+        
+        # Count bullying messages (sent by the user)
+        bullying_message_counts = dict(
+            db.session.query(Message.sender, db.func.count(Message.id))
+            .filter(Message.is_bullying == True, Message.sender.in_(usernames))
+            .group_by(Message.sender)
+            .all()
+        )
+        
         result = [
             {
                 'username': user.username,
-                'bullyinyCommentCount': bullying_counts.get(user.id, 0)
+                'bullyingCommentCount': bullying_comment_counts.get(user.id, 0),
+                'bullyingMessageCount': bullying_message_counts.get(user.username, 0),
+                'totalBullyingCount': bullying_comment_counts.get(user.id, 0) + bullying_message_counts.get(user.username, 0)
             }
             for user in users
         ]
